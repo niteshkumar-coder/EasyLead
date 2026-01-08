@@ -49,8 +49,13 @@ const LeadTable: React.FC<LeadTableProps> = ({ leads }) => {
   const isPhoneMissing = (phone: string | null) => {
     if (!phone) return true;
     const p = String(phone).trim().toLowerCase();
-    const invalidList = ['', 'null', 'na', 'n/a', 'none', 'undefined', 'not available', 'not found', 'missing', 'no phone', 'hidden'];
-    return invalidList.includes(p) || p.length < 6;
+    const invalidList = [
+      '', 'null', 'na', 'n/a', 'none', 'undefined', 
+      'not available', 'not found', 'missing', 
+      'no phone', 'hidden', 'private'
+    ];
+    // Return true if phone is in invalid list or too short to be a real number
+    return invalidList.includes(p) || p.replace(/[^0-9]/g, '').length < 6;
   };
 
   const sanitizePhoneForLink = (phone: any) => {
@@ -76,7 +81,7 @@ const LeadTable: React.FC<LeadTableProps> = ({ leads }) => {
               <th className="px-4 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700" onClick={() => toggleSort('distance')}>
                 Dist {sortKey === 'distance' && (sortOrder === 'asc' ? '↑' : '↓')}
               </th>
-              <th className="px-4 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Contact</th>
+              <th className="px-4 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Contact Number</th>
               <th className="px-4 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Maps</th>
               <th className="px-4 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Address</th>
             </tr>
@@ -88,65 +93,70 @@ const LeadTable: React.FC<LeadTableProps> = ({ leads }) => {
                   <div className="flex flex-col items-center gap-4">
                     <i className="fa-solid fa-map-location-dot text-6xl opacity-10"></i>
                     <p className="text-lg font-medium">No results to display</p>
-                    <p className="text-sm">Try searching for different categories or a larger radius.</p>
+                    <p className="text-sm">Enter a city and categories to begin your search.</p>
                   </div>
                 </td>
               </tr>
             ) : (
-              sortedLeads.map((lead, idx) => (
-                <tr key={lead.id || idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
-                  <td className="px-4 py-4 text-sm text-slate-400 font-mono">{idx + 1}</td>
-                  <td className="px-4 py-4 text-sm font-bold text-slate-900 dark:text-slate-100 max-w-[200px] truncate" title={lead.name}>{lead.name}</td>
-                  <td className="px-4 py-4 text-sm font-bold">
-                    {lead.rating ? (
-                      <div className={`flex items-center gap-1.5 ${getRatingColor(lead.rating)}`}>
-                        <i className="fa-solid fa-star text-[10px]"></i>
-                        {Number(lead.rating).toFixed(1)}
-                      </div>
-                    ) : (
-                      <span className="text-slate-300 text-[10px] font-bold uppercase">N/A</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-4 text-sm">
-                    {lead.userRatingsTotal !== null ? (
-                      <span className="text-slate-500 dark:text-slate-400 font-medium">
-                        {Number(lead.userRatingsTotal).toLocaleString()}
-                      </span>
-                    ) : (
-                      <span className="text-slate-300 text-[10px] font-bold">0</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-4">
-                    {lead.distance !== null ? (
-                      <span className={`inline-flex items-center gap-2 px-2 py-0.5 rounded-full text-[10px] font-bold ${getDistanceColor(lead.distance)}`}>
-                        {Number(lead.distance).toFixed(1)}km
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-slate-300 italic">...</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-4 text-sm">
-                    {!isPhoneMissing(lead.phone) ? (
-                      <a href={`tel:${sanitizePhoneForLink(lead.phone)}`} className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline whitespace-nowrap inline-flex items-center gap-2">
-                        <i className="fa-solid fa-phone-flip text-[10px]"></i>
-                        {lead.phone}
-                      </a>
-                    ) : (
-                      <span className="text-slate-500 text-[10px] font-bold bg-slate-100 dark:bg-slate-800/50 px-2 py-1 rounded">NA</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-4 text-sm">
-                    {lead.mapsUrl ? (
-                      <a href={lead.mapsUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-500 hover:text-indigo-400 font-bold flex items-center gap-1 whitespace-nowrap">
-                        <i className="fa-solid fa-location-dot"></i> Maps
-                      </a>
-                    ) : 'NA'}
-                  </td>
-                  <td className="px-4 py-4 text-sm text-slate-500 truncate max-w-[300px]" title={lead.address}>
-                    {lead.address}
-                  </td>
-                </tr>
-              ))
+              sortedLeads.map((lead, idx) => {
+                const phoneMissing = isPhoneMissing(lead.phone);
+                return (
+                  <tr key={lead.id || idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+                    <td className="px-4 py-4 text-sm text-slate-400 font-mono">{idx + 1}</td>
+                    <td className="px-4 py-4 text-sm font-bold text-slate-900 dark:text-slate-100 max-w-[200px] truncate" title={lead.name}>{lead.name}</td>
+                    <td className="px-4 py-4 text-sm font-bold">
+                      {lead.rating ? (
+                        <div className={`flex items-center gap-1.5 ${getRatingColor(lead.rating)}`}>
+                          <i className="fa-solid fa-star text-[10px]"></i>
+                          {Number(lead.rating).toFixed(1)}
+                        </div>
+                      ) : (
+                        <span className="text-slate-300 text-[10px] font-bold uppercase">N/A</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-4 text-sm">
+                      {lead.userRatingsTotal !== null ? (
+                        <span className="text-slate-500 dark:text-slate-400 font-medium">
+                          {Number(lead.userRatingsTotal).toLocaleString()}
+                        </span>
+                      ) : (
+                        <span className="text-slate-300 text-[10px] font-bold">0</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-4">
+                      {lead.distance !== null ? (
+                        <span className={`inline-flex items-center gap-2 px-2 py-0.5 rounded-full text-[10px] font-bold ${getDistanceColor(lead.distance)}`}>
+                          {Number(lead.distance).toFixed(1)}km
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-300 italic">...</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-4 text-sm">
+                      {!phoneMissing ? (
+                        <a href={`tel:${sanitizePhoneForLink(lead.phone)}`} className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline whitespace-nowrap inline-flex items-center gap-2">
+                          <i className="fa-solid fa-phone-flip text-[10px]"></i>
+                          {lead.phone}
+                        </a>
+                      ) : (
+                        <span className="text-slate-400 text-xs font-bold px-2 py-1 bg-slate-100 dark:bg-slate-800/50 rounded tracking-widest">NA</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-4 text-sm">
+                      {lead.mapsUrl ? (
+                        <a href={lead.mapsUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-500 hover:text-indigo-400 font-bold flex items-center gap-1 whitespace-nowrap">
+                          <i className="fa-solid fa-location-dot"></i> Maps
+                        </a>
+                      ) : (
+                        <span className="text-slate-300 text-[10px] font-bold">NA</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-4 text-sm text-slate-500 truncate max-w-[300px]" title={lead.address}>
+                      {lead.address}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
