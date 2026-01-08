@@ -17,13 +17,17 @@ export async function findBusinessLeads(
 
   const categoriesStr = categories.join(', ');
   
-  const systemInstruction = `You are an expert Lead Research Specialist. Find business leads for "${categoriesStr}" in "${city}, India" within ${radius}km.
-Output strictly as a JSON array of objects.
-Required fields: name, address, lat, lng.
-Optional fields: phone, website, email, rating, userRatingsTotal, establishedDate.
-No placeholders like "1234567890". Use null if unknown.`;
+  const systemInstruction = `You are a professional Lead Generation Specialist. Your goal is to find accurate business leads for "${categoriesStr}" in "${city}, India" within a ${radius}km radius.
 
-  const prompt = `Generate 100 business leads for ${categoriesStr} in ${city}, India. Output only JSON.`;
+CRITICAL INSTRUCTIONS:
+1. PHONE NUMBERS ARE MANDATORY: Use your Google Search tool to find the ACTUAL official phone numbers for these businesses. A lead without a phone number is significantly less valuable.
+2. SOURCE VERIFICATION: Check Google Maps profiles and official websites via search to extract real contact details.
+3. NO FAKE DATA: Do not invent phone numbers. Do not use "1234567890" or "0000000000". If a number is truly unavailable after searching, use null.
+4. FORMAT: Return a valid JSON array of objects.`;
+
+  const prompt = `Find 100 real business leads for "${categoriesStr}" in "${city}". 
+For each business, use Google Search to find their official phone number, address, and current rating. 
+Prioritize businesses that have contact numbers listed on their Google Maps profile or website.`;
 
   try {
     const response = await ai.models.generateContent({
@@ -56,26 +60,37 @@ No placeholders like "1234567890". Use null if unknown.`;
     });
 
     let text = response.text || "";
-    // Safety check for empty or non-JSON response
     if (!text.trim()) throw new Error("AI returned an empty response.");
     
-    // Sometimes the model wraps JSON in markdown blocks even with responseMimeType
     const jsonMatch = text.match(/\[[\s\S]*\]/);
     if (jsonMatch) text = jsonMatch[0];
 
     const results = JSON.parse(text);
-
     if (!Array.isArray(results)) return [];
 
     return results.map((item: any, index: number) => {
       const name = item.name || "Business Name Unknown";
       const address = item.address || "Address Unknown";
+      
+      // Strict phone cleaning
+      let phone = item.phone ? String(item.phone).trim() : null;
+      if (phone) {
+        const pLower = phone.toLowerCase();
+        const isInvalid = 
+          pLower.includes('123456789') || 
+          pLower.includes('00000000') || 
+          pLower === 'null' || 
+          pLower === 'na' || 
+          pLower === 'n/a' || 
+          pLower.length < 6;
+        if (isInvalid) phone = null;
+      }
 
       return {
         id: `lead-${Date.now()}-${index}`,
         name,
         address,
-        phone: item.phone || null,
+        phone,
         website: item.website || null,
         email: item.email || null,
         owner: null,
@@ -92,9 +107,8 @@ No placeholders like "1234567890". Use null if unknown.`;
     });
 
   } catch (error: any) {
-    console.error("Critical Search Error:", error);
+    console.error("Search Error:", error);
     if (error.message?.includes("API_KEY_MISSING")) throw error;
-    // Fast fallback attempt without tools to avoid timeout
     return await quickFallback(ai, query);
   }
 }
@@ -103,16 +117,23 @@ async function quickFallback(ai: any, query: SearchQuery): Promise<BusinessLead[
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `List 50 businesses for ${query.categories.join(', ')} in ${query.city}. JSON: [{name, address, phone, lat, lng}]`,
+      contents: `List 30 businesses for ${query.categories.join(', ')} in ${query.city} with phone numbers. JSON: [{name, address, phone, lat, lng}]`,
       config: { responseMimeType: "application/json" }
     });
     const items = JSON.parse(response.text || "[]");
     return items.map((item: any, index: number) => ({
       ...item,
-      id: `fallback-${Date.now()}-${index}`,
+      id: `fb-${Date.now()}-${index}`,
       source: 'Google Search',
       mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${item.name} ${item.address}`)}`,
-      lastUpdated: new Date().toISOString().split('T')[0]
+      lastUpdated: new Date().toISOString().split('T')[0],
+      email: null,
+      website: null,
+      owner: null,
+      distance: null,
+      establishedDate: null,
+      rating: null,
+      userRatingsTotal: null
     }));
   } catch (err) {
     return [];

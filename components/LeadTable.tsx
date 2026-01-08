@@ -49,8 +49,8 @@ const LeadTable: React.FC<LeadTableProps> = ({ leads }) => {
   const isPhoneMissing = (phone: string | null) => {
     if (!phone) return true;
     const p = String(phone).trim().toLowerCase();
-    const invalidList = ['', 'null', 'na', 'n/a', 'none', 'undefined', 'not available', 'not found', 'missing'];
-    return invalidList.includes(p) || p.length < 5;
+    const invalidList = ['', 'null', 'na', 'n/a', 'none', 'undefined', 'not available', 'not found', 'missing', 'no phone', 'hidden'];
+    return invalidList.includes(p) || p.length < 6;
   };
 
   const sanitizePhoneForLink = (phone: any) => {
@@ -104,7 +104,7 @@ const LeadTable: React.FC<LeadTableProps> = ({ leads }) => {
                         {Number(lead.rating).toFixed(1)}
                       </div>
                     ) : (
-                      <span className="text-slate-300 text-[10px] font-bold">N/A</span>
+                      <span className="text-slate-300 text-[10px] font-bold uppercase">N/A</span>
                     )}
                   </td>
                   <td className="px-4 py-4 text-sm">
@@ -127,11 +127,12 @@ const LeadTable: React.FC<LeadTableProps> = ({ leads }) => {
                   </td>
                   <td className="px-4 py-4 text-sm">
                     {!isPhoneMissing(lead.phone) ? (
-                      <a href={`tel:${sanitizePhoneForLink(lead.phone)}`} className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline whitespace-nowrap">
-                        <i className="fa-solid fa-phone-flip mr-2"></i>{lead.phone}
+                      <a href={`tel:${sanitizePhoneForLink(lead.phone)}`} className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline whitespace-nowrap inline-flex items-center gap-2">
+                        <i className="fa-solid fa-phone-flip text-[10px]"></i>
+                        {lead.phone}
                       </a>
                     ) : (
-                      <span className="text-slate-500 text-[10px] uppercase font-bold bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">NA</span>
+                      <span className="text-slate-500 text-[10px] uppercase font-bold bg-slate-100 dark:bg-slate-800/50 px-2 py-1 rounded">NA</span>
                     )}
                   </td>
                   <td className="px-4 py-4 text-sm">
@@ -150,6 +151,11 @@ const LeadTable: React.FC<LeadTableProps> = ({ leads }) => {
           </tbody>
         </table>
       </div>
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+      `}</style>
     </div>
   );
 };

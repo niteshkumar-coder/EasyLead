@@ -1,12 +1,14 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { BusinessLead, SearchQuery, SearchHistory } from './types';
+import { BusinessLead, SearchQuery, SearchHistory, User } from './types';
 import { BUSINESS_CATEGORIES, STORAGE_KEYS, INDIA_CITIES } from './constants';
 import { findBusinessLeads, calculateDistance } from './services/businessService';
 import { exportToCSV, exportToPDF, copyToClipboard } from './services/exportService';
 import LeadTable from './components/LeadTable';
 
 const App: React.FC = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [authForm, setAuthForm] = useState({ name: '', email: '' });
   const [city, setCity] = useState('');
   const [radius, setRadius] = useState(20);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -26,6 +28,17 @@ const App: React.FC = () => {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Load User
+    const savedUser = localStorage.getItem('easylead_user');
+    if (savedUser) {
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch (e) {
+        console.error("Failed to parse user", e);
+      }
+    }
+
+    // Load History
     const savedHistory = localStorage.getItem(STORAGE_KEYS.HISTORY);
     if (savedHistory) {
       try {
@@ -77,6 +90,19 @@ const App: React.FC = () => {
       if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
     };
   }, [loading]);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authForm.name || !authForm.email) return;
+    const newUser = { name: authForm.name, email: authForm.email };
+    setUser(newUser);
+    localStorage.setItem('easylead_user', JSON.stringify(newUser));
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('easylead_user');
+  };
 
   const performSearch = useCallback(async (searchCity: string, searchCategories: string[], searchRadius: number) => {
     if (!searchCity || searchCategories.length === 0) return;
@@ -136,6 +162,82 @@ const App: React.FC = () => {
 
   const filteredCategories = BUSINESS_CATEGORIES.filter(cat => cat.toLowerCase().includes(categorySearch.toLowerCase()));
 
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 p-6 relative overflow-hidden">
+        {/* Animated Background Orbs */}
+        <div className="absolute top-0 -left-4 w-72 h-72 bg-indigo-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+        <div className="absolute top-0 -right-4 w-72 h-72 bg-violet-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+        <div className="absolute -bottom-8 left-20 w-72 h-72 bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
+
+        <div className="w-full max-w-md bg-slate-900/50 backdrop-blur-xl border border-slate-800 p-8 rounded-3xl shadow-2xl z-10">
+          <div className="text-center mb-10">
+            <div className="inline-flex items-center justify-center bg-indigo-600 p-3 rounded-2xl shadow-lg mb-6">
+              <i className="fa-solid fa-bolt text-white text-2xl"></i>
+            </div>
+            <h1 className="text-3xl font-black text-white mb-2">Welcome to EasyLead</h1>
+            <p className="text-slate-400 font-medium">Please enter your details to access the dashboard</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Full Name</label>
+              <div className="relative">
+                <i className="fa-solid fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                <input 
+                  type="text" 
+                  required 
+                  value={authForm.name} 
+                  onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
+                  placeholder="John Doe" 
+                  className="w-full pl-12 pr-4 py-3 bg-slate-800 border border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-white"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Gmail Address</label>
+              <div className="relative">
+                <i className="fa-solid fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                <input 
+                  type="email" 
+                  required 
+                  value={authForm.email} 
+                  onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
+                  placeholder="john@gmail.com" 
+                  className="w-full pl-12 pr-4 py-3 bg-slate-800 border border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-white"
+                />
+              </div>
+            </div>
+
+            <button 
+              type="submit" 
+              className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl transition-all shadow-xl hover:shadow-indigo-500/20 active:scale-[0.98]"
+            >
+              Access Dashboard
+            </button>
+          </form>
+
+          <p className="mt-8 text-center text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+            Privacy Guaranteed &bull; Secure Access
+          </p>
+        </div>
+
+        <style>{`
+          @keyframes blob {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+          }
+          .animate-blob { animation: blob 7s infinite; }
+          .animation-delay-2000 { animation-delay: 2s; }
+          .animation-delay-4000 { animation-delay: 4s; }
+        `}</style>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 transition-colors duration-300">
       <datalist id="india-cities">
@@ -144,17 +246,25 @@ const App: React.FC = () => {
 
       <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-30 px-4 md:px-8 py-4 shadow-sm">
         <div className="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className="bg-indigo-600 p-2.5 rounded-xl shadow-lg">
-              <i className="fa-solid fa-bolt text-white text-xl"></i>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="bg-indigo-600 p-2.5 rounded-xl shadow-lg">
+                <i className="fa-solid fa-bolt text-white text-xl"></i>
+              </div>
+              <div>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">EasyLead</h1>
+                <p className="text-[10px] text-slate-400 font-medium tracking-widest uppercase">High Speed Lead Gen</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">EasyLead</h1>
-              <p className="text-[10px] text-slate-400 font-medium tracking-widest uppercase">High Speed Lead Gen</p>
+            
+            {/* User Profile / Logout for Mobile */}
+            <div className="lg:hidden flex items-center gap-3">
+               <span className="text-xs font-bold text-slate-400 truncate max-w-[80px]">{user.name}</span>
+               <button onClick={handleLogout} className="p-2 text-slate-500 hover:text-rose-500"><i className="fa-solid fa-right-from-bracket"></i></button>
             </div>
           </div>
 
-          <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 lg:max-w-5xl">
+          <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 lg:max-w-4xl">
             <div className="relative flex-[1.5]">
               <i className="fa-solid fa-location-dot absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
               <input type="text" value={city} list="india-cities" onChange={(e) => setCity(e.target.value)} placeholder="City name..." className="w-full pl-10 pr-4 py-2 border border-slate-700 bg-slate-800 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" required />
@@ -194,6 +304,17 @@ const App: React.FC = () => {
               {loading ? 'Finding...' : 'Start Search'}
             </button>
           </form>
+
+          {/* Desktop User Info */}
+          <div className="hidden lg:flex items-center gap-4 pl-6 border-l border-slate-800">
+            <div className="text-right">
+              <p className="text-xs font-black text-white">{user.name}</p>
+              <p className="text-[10px] text-slate-500 font-bold truncate max-w-[120px]">{user.email}</p>
+            </div>
+            <button onClick={handleLogout} title="Logout" className="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-all">
+              <i className="fa-solid fa-right-from-bracket"></i>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -253,7 +374,11 @@ const App: React.FC = () => {
 
       <footer className="bg-slate-900 border-t border-slate-800 py-8 px-6 mt-auto">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] text-slate-500 uppercase tracking-widest font-bold">
-          <p>© 2024 EasyLead India</p>
+          <div className="flex items-center gap-4">
+            <p>© 2024 EasyLead India</p>
+            <span className="h-1 w-1 bg-slate-800 rounded-full"></span>
+            <p className="text-slate-400">Logged in as: {user.name} ({user.email})</p>
+          </div>
           <p>Powered by Gemini 3 Flash & Google Search</p>
         </div>
       </footer>

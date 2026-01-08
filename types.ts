@@ -1,4 +1,9 @@
 
+export interface User {
+  name: string;
+  email: string;
+}
+
 export interface BusinessLead {
   id: string;
   name: string;
