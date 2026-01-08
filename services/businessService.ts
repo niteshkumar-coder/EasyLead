@@ -8,7 +8,7 @@ export async function findBusinessLeads(
 ): Promise<BusinessLead[]> {
   const apiKey = process.env.API_KEY;
   
-  if (!apiKey || apiKey === "undefined") {
+  if (!apiKey || apiKey === "undefined" || apiKey === "") {
     throw new Error("API_KEY_MISSING: Please add your Gemini API Key to Vercel Environment Variables.");
   }
 
@@ -17,24 +17,21 @@ export async function findBusinessLeads(
 
   const categoriesStr = categories.join(', ');
   
-  const systemInstruction = `You are an expert Lead Research Specialist. Your task is to find exactly 100 REAL business leads for "${categoriesStr}" in or around "${city}, India" within a ${radius}km radius.
+  const systemInstruction = `You are an expert Lead Research Specialist. Find business leads for "${categoriesStr}" in "${city}, India" within ${radius}km.
+Output strictly as a JSON array of objects.
+Required fields: name, address, lat, lng.
+Optional fields: phone, website, email, rating, userRatingsTotal, establishedDate.
+No placeholders like "1234567890". Use null if unknown.`;
 
-CRITICAL DATA ACCURACY RULES:
-1. PHONE NUMBERS: Use googleSearch to find official contact details. 
-2. NO PLACEHOLDERS: If no phone is found, return null. Do not use fake numbers like 1234567890.
-3. OUTPUT: Valid JSON array of 100 objects.`;
-
-  const prompt = `Find 100 business leads for "${categoriesStr}" in "${city}, India" (${radius}km radius). Include official phone numbers, addresses, and Google Maps ratings.`;
+  const prompt = `Generate 100 business leads for ${categoriesStr} in ${city}, India. Output only JSON.`;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview", // Flash is much faster and prevents Vercel Timeouts
+      model: "gemini-3-flash-preview",
       contents: prompt,
       config: {
         systemInstruction,
         tools: [{ googleSearch: {} }],
-        // Reduced thinking budget to stay within Vercel's 10s limit
-        thinkingConfig: { thinkingBudget: 2000 }, 
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.ARRAY,
@@ -58,65 +55,61 @@ CRITICAL DATA ACCURACY RULES:
       }
     });
 
-    const text = response.text;
-    if (!text) throw new Error("Empty response from AI");
+    let text = response.text || "";
+    // Safety check for empty or non-JSON response
+    if (!text.trim()) throw new Error("AI returned an empty response.");
     
-    const results = JSON.parse(text.trim());
+    // Sometimes the model wraps JSON in markdown blocks even with responseMimeType
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (jsonMatch) text = jsonMatch[0];
+
+    const results = JSON.parse(text);
+
+    if (!Array.isArray(results)) return [];
 
     return results.map((item: any, index: number) => {
-      let phone = item.phone;
-      if (typeof phone === 'string') {
-        const p = phone.trim().toLowerCase();
-        const isPlaceholder = !p || p === 'null' || p === 'na' || p.includes('1234567890') || p.includes('000000');
-        phone = isPlaceholder ? null : phone.trim();
-      } else {
-        phone = null;
-      }
-
-      const name = item.name || "Unknown Business";
-      const address = item.address || "Address unavailable";
+      const name = item.name || "Business Name Unknown";
+      const address = item.address || "Address Unknown";
 
       return {
         id: `lead-${Date.now()}-${index}`,
         name,
         address,
-        phone,
+        phone: item.phone || null,
         website: item.website || null,
         email: item.email || null,
         owner: null,
-        lat: typeof item.lat === 'number' ? item.lat : 0,
-        lng: typeof item.lng === 'number' ? item.lng : 0,
+        lat: Number(item.lat) || 0,
+        lng: Number(item.lng) || 0,
         distance: null,
         source: 'Google Search',
         mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${name} ${address}`)}`,
         lastUpdated: new Date().toISOString().split('T')[0],
         establishedDate: item.establishedDate || null,
-        rating: item.rating || null,
-        userRatingsTotal: item.userRatingsTotal || null
+        rating: typeof item.rating === 'number' ? item.rating : null,
+        userRatingsTotal: typeof item.userRatingsTotal === 'number' ? item.userRatingsTotal : null
       };
     });
 
   } catch (error: any) {
-    console.error("Search Error:", error);
+    console.error("Critical Search Error:", error);
     if (error.message?.includes("API_KEY_MISSING")) throw error;
+    // Fast fallback attempt without tools to avoid timeout
     return await quickFallback(ai, query);
   }
 }
 
 async function quickFallback(ai: any, query: SearchQuery): Promise<BusinessLead[]> {
-  const categoriesStr = query.categories.join(', ');
-  const fallbackPrompt = `List 100 businesses in "${query.city}" for ${categoriesStr}. Return JSON array with fields: name, address, phone, lat, lng.`;
-  
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: fallbackPrompt,
+      contents: `List 50 businesses for ${query.categories.join(', ')} in ${query.city}. JSON: [{name, address, phone, lat, lng}]`,
       config: { responseMimeType: "application/json" }
     });
-    const items = JSON.parse(response.text.trim());
+    const items = JSON.parse(response.text || "[]");
     return items.map((item: any, index: number) => ({
       ...item,
-      id: `fb-${Date.now()}-${index}`,
+      id: `fallback-${Date.now()}-${index}`,
       source: 'Google Search',
       mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${item.name} ${item.address}`)}`,
       lastUpdated: new Date().toISOString().split('T')[0]
@@ -127,7 +120,7 @@ async function quickFallback(ai: any, query: SearchQuery): Promise<BusinessLead[
 }
 
 export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
+  if (isNaN(lat1) || isNaN(lon1) || isNaN(lat2) || isNaN(lon2)) return 0;
   const R = 6371;
   const dLat = (lat2 - lat1) * (Math.PI / 180);
   const dLon = (lon2 - lon1) * (Math.PI / 180);
