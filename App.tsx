@@ -12,7 +12,6 @@ const App: React.FC = () => {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [categorySearch, setCategorySearch] = useState('');
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
-  const [showDeployGuide, setShowDeployGuide] = useState(false);
   const [loading, setLoading] = useState(false);
   const [leads, setLeads] = useState<BusinessLead[]>([]);
   const [history, setHistory] = useState<SearchHistory[]>([]);
@@ -63,12 +62,12 @@ const App: React.FC = () => {
       setProgress(0);
       setSimulatedLeads(0);
       const messages = [
-        "Gemini AI से जुड़ रहे हैं...",
-        "Google Maps स्कैन कर रहे हैं...",
-        "संपर्क नंबर निकाले जा रहे हैं...",
-        "बिजनेस रेटिंग चेक कर रहे हैं...",
-        "लोकेशन वेरिफाई हो रही है...",
-        "रिपोर्ट तैयार की जा रही है..."
+        "Connecting to Gemini AI...",
+        "Scanning Google Maps...",
+        "Extracting contact numbers...",
+        "Checking business ratings...",
+        "Verifying locations...",
+        "Preparing final report..."
       ];
       tickerIntervalRef.current = window.setInterval(() => {
         setTickerMessage(messages[Math.floor(Math.random() * messages.length)]);
@@ -128,7 +127,7 @@ const App: React.FC = () => {
       }
     } catch (error) {
       console.error(error);
-      alert("सर्च फेल हो गया। कृपया दोबारा कोशिश करें।");
+      alert("Search failed. Please try again.");
       setLoading(false);
     }
   }, [userCoords]);
@@ -136,7 +135,7 @@ const App: React.FC = () => {
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedCategories.length === 0) {
-      alert("कृपया कम से कम एक कैटेगरी चुनें।");
+      alert("Please select at least one category.");
       return;
     }
     performSearch(city, selectedCategories, radius);
@@ -158,93 +157,6 @@ const App: React.FC = () => {
         {INDIA_CITIES.map(c => <option key={c} value={c} />)}
       </datalist>
 
-      {/* Deployment Guide Modal (Hindi) */}
-      {showDeployGuide && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto custom-scrollbar shadow-2xl">
-            <div className="sticky top-0 bg-slate-900 p-6 border-b border-slate-800 flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <i className="fa-brands fa-github text-3xl text-indigo-400"></i>
-                <h2 className="text-xl font-bold">GitHub & Vercel पर लाइव करें</h2>
-              </div>
-              <button onClick={() => setShowDeployGuide(false)} className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400">
-                <i className="fa-solid fa-xmark text-lg"></i>
-              </button>
-            </div>
-            
-            <div className="p-8 space-y-8">
-              {/* Step 0: Get API KEY */}
-              <section className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <span className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-sm">0</span>
-                  <h3 className="text-lg font-bold text-emerald-400">Gemini API Key लें</h3>
-                </div>
-                <div className="pl-11 space-y-3">
-                  <p className="text-slate-400 text-sm">अगर आपके पास API Key नहीं है, तो अभी यहां से लें (यह फ्री है):</p>
-                  <a href="https://aistudio.google.com/app/apikey" target="_blank" className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-600/50 rounded-lg text-sm font-bold transition-all">
-                    <i className="fa-solid fa-key"></i>
-                    Get Free API Key
-                    <i className="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
-                  </a>
-                </div>
-              </section>
-
-              <section className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <span className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-sm">1</span>
-                  <h3 className="text-lg font-bold">GitHub पर Repository बनाएं</h3>
-                </div>
-                <p className="text-slate-400 pl-11 text-sm">GitHub पर जाएं और <span className="text-white font-mono bg-slate-800 px-2 py-0.5 rounded">easylead</span> नाम से नई Repo बनाएं।</p>
-              </section>
-
-              <section className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <span className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-sm">2</span>
-                  <h3 className="text-lg font-bold">ये कमांड्स चलाएं</h3>
-                </div>
-                <p className="text-slate-400 pl-11 text-sm">अपने कंप्यूटर के फोल्डर में Terminal खोलें और ये कोड कॉपी करके पेस्ट करें:</p>
-                <div className="pl-11">
-                  <div className="bg-slate-950 rounded-xl p-4 font-mono text-xs text-indigo-300 border border-slate-800 relative group">
-                    <pre><code>{`git init
-git add .
-git commit -m "site live"
-git branch -M main
-git remote add origin https://github.com/YOUR_USER/easylead.git
-git push -u origin main`}</code></pre>
-                    <button onClick={() => {
-                        navigator.clipboard.writeText('git init\ngit add .\ngit commit -m "site live"\ngit branch -M main\ngit remote add origin https://github.com/YOUR_USER/easylead.git\ngit push -u origin main');
-                        alert("कोड कॉपी हो गया!");
-                    }} className="absolute top-2 right-2 p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 transition-all">
-                      <i className="fa-solid fa-copy"></i>
-                    </button>
-                  </div>
-                  <p className="mt-3 text-xs text-rose-400 font-bold flex items-center gap-2">
-                    <i className="fa-solid fa-circle-exclamation"></i>
-                    अगर "vite: command not found" आए, तो मेरे द्वारा दिए गए नए package.json को अपडेट करें।
-                  </p>
-                </div>
-              </section>
-
-              <section className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <span className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-sm">3</span>
-                  <h3 className="text-lg font-bold">Vercel पर कनेक्ट करें</h3>
-                </div>
-                <ul className="text-slate-400 pl-11 text-sm space-y-2 list-disc">
-                  <li>Vercel.com पर जाएं और GitHub वाली Repo को Import करें।</li>
-                  <li><b>Environment Variables</b> में जाकर <b>API_KEY</b> और अपनी की (Key) डालना न भूलें।</li>
-                  <li>Deploy बटन दबाएं और आपकी साइट लाइव हो जाएगी!</li>
-                </ul>
-              </section>
-
-              <button onClick={() => setShowDeployGuide(false)} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-xl">
-                ठीक है, मैं समझ गया!
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-30 px-4 md:px-8 py-4 shadow-sm">
         <div className="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="flex items-center justify-between">
@@ -257,17 +169,12 @@ git push -u origin main`}</code></pre>
                 <p className="text-[10px] text-slate-400 font-medium tracking-widest uppercase">High Speed Lead Gen</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 lg:hidden">
-              <button onClick={() => setShowDeployGuide(true)} className="p-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-slate-300 border border-slate-700">
-                <i className="fa-brands fa-github"></i>
-              </button>
-            </div>
           </div>
 
           <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 lg:max-w-5xl">
             <div className="relative flex-1">
               <i className="fa-solid fa-location-dot absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-              <input type="text" value={city} list="india-cities" onChange={(e) => setCity(e.target.value)} placeholder="शहर का नाम लिखें..." className="w-full pl-10 pr-4 py-2.5 border border-slate-700 bg-slate-800 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm" required />
+              <input type="text" value={city} list="india-cities" onChange={(e) => setCity(e.target.value)} placeholder="Enter city name..." className="w-full pl-10 pr-4 py-2.5 border border-slate-700 bg-slate-800 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm" required />
             </div>
             
             <div className="relative flex-1" ref={dropdownRef}>
@@ -277,7 +184,7 @@ git push -u origin main`}</code></pre>
               >
                 <div className="flex flex-wrap gap-1 items-center overflow-hidden">
                   {selectedCategories.length === 0 ? (
-                    <span className="text-slate-400 text-sm">कैटेगरी चुनें...</span>
+                    <span className="text-slate-400 text-sm">Select categories...</span>
                   ) : (
                     selectedCategories.slice(0, 1).map(cat => (
                       <span key={cat} className="bg-indigo-900/50 text-indigo-300 px-2 py-0.5 rounded-lg text-xs font-bold whitespace-nowrap">
@@ -299,7 +206,7 @@ git push -u origin main`}</code></pre>
                     <input 
                       type="text" 
                       autoFocus
-                      placeholder="सर्च करें..." 
+                      placeholder="Search categories..." 
                       className="w-full pl-9 pr-4 py-2 bg-slate-800 border-none rounded-lg text-sm outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100"
                       value={categorySearch}
                       onChange={(e) => setCategorySearch(e.target.value)}
@@ -326,19 +233,9 @@ git push -u origin main`}</code></pre>
 
             <button type="submit" disabled={loading} className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-700 text-white font-bold py-2.5 px-6 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2">
               {loading ? <i className="fa-solid fa-circle-notch animate-spin"></i> : <i className="fa-solid fa-magnifying-glass"></i>}
-              {loading ? 'स्कैन हो रहा है...' : '100 लीड्स खोजें'}
+              {loading ? 'Scanning...' : 'Find 100 Leads'}
             </button>
           </form>
-
-          <div className="hidden lg:flex items-center gap-2">
-            <button 
-              onClick={() => setShowDeployGuide(true)} 
-              className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-slate-300 text-sm font-bold transition-all"
-            >
-              <i className="fa-brands fa-github text-lg"></i>
-              Live Host करें
-            </button>
-          </div>
         </div>
       </header>
 
@@ -348,7 +245,7 @@ git push -u origin main`}</code></pre>
             <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#4f46e5_1px,transparent_1px)] [background-size:20px_20px]"></div>
             
             <div className="relative z-10 space-y-4">
-              <h3 className="text-4xl font-black text-white tracking-tight">खोज जारी है...</h3>
+              <h3 className="text-4xl font-black text-white tracking-tight">Searching...</h3>
               <p className="text-slate-500 max-w-md mx-auto text-lg font-medium">{tickerMessage}</p>
             </div>
 
@@ -356,11 +253,11 @@ git push -u origin main`}</code></pre>
               <div className="flex justify-between items-end mb-4">
                 <div className="text-left">
                   <span className="text-4xl font-black text-indigo-400">{Math.round(progress)}%</span>
-                  <span className="text-slate-400 ml-2 font-bold uppercase text-xs tracking-widest">पूरा हुआ</span>
+                  <span className="text-slate-400 ml-2 font-bold uppercase text-xs tracking-widest">Completed</span>
                 </div>
                 <div className="text-right">
                   <span className="text-3xl font-black text-slate-200">{simulatedLeads}</span>
-                  <span className="text-slate-400 ml-2 font-bold uppercase text-xs tracking-widest">मिले</span>
+                  <span className="text-slate-400 ml-2 font-bold uppercase text-xs tracking-widest">Found</span>
                 </div>
               </div>
 
@@ -380,12 +277,12 @@ git push -u origin main`}</code></pre>
               <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-sm overflow-hidden">
                 <div className="bg-slate-800/50 px-6 py-4 border-b border-slate-800 flex justify-between items-center">
                   <h3 className="font-bold text-slate-100 flex items-center gap-2">
-                    <i className="fa-solid fa-history text-indigo-500"></i> हिस्ट्री
+                    <i className="fa-solid fa-history text-indigo-500"></i> History
                   </h3>
                 </div>
                 <div className="p-3 space-y-2 max-h-[500px] overflow-y-auto custom-scrollbar">
                   {history.length === 0 ? (
-                    <div className="py-12 text-center opacity-40 text-xs">कोई हालिया गतिविधि नहीं</div>
+                    <div className="py-12 text-center opacity-40 text-xs">No recent activity</div>
                   ) : (
                     history.map(h => (
                       <div key={h.id} onClick={() => { setCity(h.query.city); setSelectedCategories(h.query.categories); performSearch(h.query.city, h.query.categories, h.query.radius); }} className="group p-4 rounded-xl border border-slate-800 hover:border-indigo-500 hover:bg-indigo-900/10 transition-all cursor-pointer">
@@ -404,15 +301,15 @@ git push -u origin main`}</code></pre>
             <div className="lg:col-span-3 space-y-6">
               <div className="flex flex-col sm:flex-row justify-between items-end gap-4">
                 <div>
-                  <h2 className="text-3xl font-black text-white">लीड्स डैशबोर्ड</h2>
-                  <p className="text-slate-500 font-medium">Gemini AI द्वारा वेरिफाइड डेटा</p>
+                  <h2 className="text-3xl font-black text-white">Leads Dashboard</h2>
+                  <p className="text-slate-500 font-medium">Verified data by Gemini AI</p>
                 </div>
                 <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                   <button onClick={() => exportToCSV(leads)} disabled={leads.length === 0} className="flex-1 sm:flex-none px-5 py-2.5 bg-slate-800 text-white border border-slate-700 rounded-xl text-sm font-bold hover:bg-slate-700 transition-all disabled:opacity-50">
                     <i className="fa-solid fa-file-csv mr-2"></i> CSV
                   </button>
                   <button onClick={() => exportToPDF(leads, selectedCategories)} disabled={leads.length === 0} className="flex-1 sm:flex-none px-5 py-2.5 bg-rose-600 text-white rounded-xl text-sm font-bold hover:bg-rose-700 transition-all disabled:opacity-50">
-                    <i className="fa-solid fa-file-pdf mr-2"></i> PDF रिपोर्ट
+                    <i className="fa-solid fa-file-pdf mr-2"></i> PDF Report
                   </button>
                 </div>
               </div>
@@ -428,12 +325,6 @@ git push -u origin main`}</code></pre>
             <p>© 2024 EasyLead India</p>
             <span className="w-1 h-1 rounded-full bg-slate-300/20"></span>
             <p>Engine: Gemini 3 Flash</p>
-          </div>
-          <div className="flex gap-4">
-            <button onClick={() => setShowDeployGuide(true)} className="hover:text-white transition-colors flex items-center gap-2">
-              <i className="fa-brands fa-github"></i>
-              होस्टिंग गाइड
-            </button>
           </div>
         </div>
       </footer>
