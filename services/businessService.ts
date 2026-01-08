@@ -17,17 +17,18 @@ export async function findBusinessLeads(
 
   const categoriesStr = categories.join(', ');
   
-  const systemInstruction = `You are a professional Lead Generation Specialist. Your goal is to find accurate business leads for "${categoriesStr}" in "${city}, India" within a ${radius}km radius.
+  const systemInstruction = `You are a professional Lead Generation Specialist for the Indian market. Your task is to find exactly 100 business leads for "${categoriesStr}" in "${city}, India" within ${radius}km.
 
-CRITICAL INSTRUCTIONS:
-1. PHONE NUMBERS ARE MANDATORY: Use your Google Search tool to find the ACTUAL official phone numbers for these businesses. A lead without a phone number is significantly less valuable.
-2. SOURCE VERIFICATION: Check Google Maps profiles and official websites via search to extract real contact details.
-3. NO FAKE DATA: Do not invent phone numbers. Do not use "1234567890" or "0000000000". If a number is truly unavailable after searching, use null.
-4. FORMAT: Return a valid JSON array of objects.`;
+CRITICAL DATA EXTRACTION RULES:
+1. PHONE NUMBERS: You MUST use the Google Search tool to extract the official phone number directly from the business's Google Maps profile (GMB) or their official website.
+2. ACCURACY: If a phone number is visible on their Google Maps profile, you MUST include it. If it is absolutely not found after a thorough search, use null.
+3. NO FAKE DATA: Never return placeholders like "1234567890", "0000000000", or repeating digits.
+4. QUANTITY: Aim for exactly 100 leads. If 100 aren't available for one category, expand to similar neighboring categories to reach the target of 100.
+5. FORMAT: Return a valid JSON array of objects.`;
 
-  const prompt = `Find 100 real business leads for "${categoriesStr}" in "${city}". 
-For each business, use Google Search to find their official phone number, address, and current rating. 
-Prioritize businesses that have contact numbers listed on their Google Maps profile or website.`;
+  const prompt = `Perform a deep search for 100 businesses in ${city} belonging to these categories: ${categoriesStr}. 
+For every business, check their Google Maps profile to get their specific official contact number, current rating, and full address. 
+Output the results as a JSON array.`;
 
   try {
     const response = await ai.models.generateContent({
@@ -72,18 +73,21 @@ Prioritize businesses that have contact numbers listed on their Google Maps prof
       const name = item.name || "Business Name Unknown";
       const address = item.address || "Address Unknown";
       
-      // Strict phone cleaning
+      // Rigorous phone validation
       let phone = item.phone ? String(item.phone).trim() : null;
       if (phone) {
+        const digits = phone.replace(/[^0-9]/g, '');
         const pLower = phone.toLowerCase();
-        const isInvalid = 
-          pLower.includes('123456789') || 
-          pLower.includes('00000000') || 
-          pLower === 'null' || 
-          pLower === 'na' || 
-          pLower === 'n/a' || 
-          pLower.length < 6;
-        if (isInvalid) phone = null;
+        
+        const isPlaceholder = 
+          digits.length < 7 || 
+          /^(.)\1+$/.test(digits) || 
+          digits === '1234567890' ||
+          pLower.includes('null') || 
+          pLower.includes('not found') ||
+          pLower.includes('hidden');
+
+        if (isPlaceholder) phone = null;
       }
 
       return {
@@ -107,8 +111,9 @@ Prioritize businesses that have contact numbers listed on their Google Maps prof
     });
 
   } catch (error: any) {
-    console.error("Search Error:", error);
+    console.error("Primary Search Failed:", error);
     if (error.message?.includes("API_KEY_MISSING")) throw error;
+    // Fast fallback with higher quantity request if primary fails
     return await quickFallback(ai, query);
   }
 }
@@ -117,22 +122,23 @@ async function quickFallback(ai: any, query: SearchQuery): Promise<BusinessLead[
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `List 30 businesses for ${query.categories.join(', ')} in ${query.city} with phone numbers. JSON: [{name, address, phone, lat, lng}]`,
+      contents: `List exactly 100 businesses for ${query.categories.join(', ')} in ${query.city} with real phone numbers. Output ONLY a JSON array: [{name, address, phone, lat, lng, rating}]`,
       config: { responseMimeType: "application/json" }
     });
     const items = JSON.parse(response.text || "[]");
     return items.map((item: any, index: number) => ({
       ...item,
-      id: `fb-${Date.now()}-${index}`,
+      id: `fallback-${Date.now()}-${index}`,
       source: 'Google Search',
       mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${item.name} ${item.address}`)}`,
       lastUpdated: new Date().toISOString().split('T')[0],
+      phone: item.phone && !item.phone.includes('12345') ? item.phone : null,
       email: null,
       website: null,
       owner: null,
       distance: null,
       establishedDate: null,
-      rating: null,
+      rating: typeof item.rating === 'number' ? item.rating : null,
       userRatingsTotal: null
     }));
   } catch (err) {
