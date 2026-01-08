@@ -125,9 +125,12 @@ const App: React.FC = () => {
           return updated;
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("Search failed. Please try again.");
+      const msg = error.message?.includes("API_KEY_MISSING") 
+        ? "Error: API_KEY not found. Please add it to your Vercel Environment Variables." 
+        : "Search failed due to a timeout or API error. Please try again with a smaller radius or fewer categories.";
+      alert(msg);
       setLoading(false);
     }
   }, [userCoords]);
@@ -171,13 +174,13 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 lg:max-w-5xl">
-            <div className="relative flex-1">
+          <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 lg:max-w-6xl">
+            <div className="relative flex-[1.5]">
               <i className="fa-solid fa-location-dot absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
               <input type="text" value={city} list="india-cities" onChange={(e) => setCity(e.target.value)} placeholder="Enter city name..." className="w-full pl-10 pr-4 py-2.5 border border-slate-700 bg-slate-800 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm" required />
             </div>
             
-            <div className="relative flex-1" ref={dropdownRef}>
+            <div className="relative flex-[1.5]" ref={dropdownRef}>
               <div 
                 onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
                 className="w-full py-2.5 px-4 border border-slate-700 bg-slate-800 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all cursor-pointer flex items-center justify-between min-h-[44px]"
@@ -229,6 +232,23 @@ const App: React.FC = () => {
                   </div>
                 </div>
               )}
+            </div>
+
+            <div className="flex flex-col gap-1 flex-1 min-w-[120px]">
+              <div className="flex justify-between items-center px-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Radius</span>
+                <span className="text-[10px] font-black text-indigo-400">{radius}km</span>
+              </div>
+              <div className="relative flex items-center h-full">
+                <input 
+                  type="range" 
+                  min="1" 
+                  max="100" 
+                  value={radius} 
+                  onChange={(e) => setRadius(parseInt(e.target.value))}
+                  className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                />
+              </div>
             </div>
 
             <button type="submit" disabled={loading} className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-700 text-white font-bold py-2.5 px-6 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2">
@@ -285,7 +305,7 @@ const App: React.FC = () => {
                     <div className="py-12 text-center opacity-40 text-xs">No recent activity</div>
                   ) : (
                     history.map(h => (
-                      <div key={h.id} onClick={() => { setCity(h.query.city); setSelectedCategories(h.query.categories); performSearch(h.query.city, h.query.categories, h.query.radius); }} className="group p-4 rounded-xl border border-slate-800 hover:border-indigo-500 hover:bg-indigo-900/10 transition-all cursor-pointer">
+                      <div key={h.id} onClick={() => { setCity(h.query.city); setSelectedCategories(h.query.categories); setRadius(h.query.radius); performSearch(h.query.city, h.query.categories, h.query.radius); }} className="group p-4 rounded-xl border border-slate-800 hover:border-indigo-500 hover:bg-indigo-900/10 transition-all cursor-pointer">
                         <div className="flex justify-between items-start">
                           <span className="font-bold text-sm truncate">{h.query.city}</span>
                           <span className="text-[10px] bg-indigo-900 text-indigo-300 px-2 py-0.5 rounded-full font-bold">{h.resultCount}</span>
@@ -336,6 +356,18 @@ const App: React.FC = () => {
         .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        
+        input[type=range]::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 14px;
+          height: 14px;
+          background: #6366f1;
+          cursor: pointer;
+          border-radius: 50%;
+          border: 2px solid #fff;
+          box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
       `}</style>
     </div>
   );
