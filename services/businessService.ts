@@ -20,14 +20,14 @@ export async function findBusinessLeads(
   const systemInstruction = `You are a professional Lead Generation Specialist for the Indian market. Your task is to find exactly 100 business leads for "${categoriesStr}" in "${city}, India" within ${radius}km.
 
 CRITICAL DATA EXTRACTION RULES:
-1. PHONE NUMBERS: You MUST use the Google Search tool to extract the official phone number directly from the business's Google Maps profile (GMB) or their official website.
-2. ACCURACY: If a phone number is visible on their Google Maps profile, you MUST include it. If it is absolutely not found after a thorough search, use null.
+1. PHONE NUMBERS: You MUST use the Google Search tool to extract the "formatted_phone_number" directly from the business's Google Maps profile (GMB).
+2. ACCURACY: If a mobile number is visible on their Google profile, you MUST include it in the 'phone' field. If it is absolutely not found after searching, use null.
 3. NO FAKE DATA: Never return placeholders like "1234567890", "0000000000", or repeating digits.
-4. QUANTITY: Aim for exactly 100 leads. If 100 aren't available for one category, expand to similar neighboring categories to reach the target of 100.
+4. QUANTITY: Find exactly 100 leads.
 5. FORMAT: Return a valid JSON array of objects.`;
 
   const prompt = `Perform a deep search for 100 businesses in ${city} belonging to these categories: ${categoriesStr}. 
-For every business, check their Google Maps profile to get their specific official contact number, current rating, and full address. 
+For every business, check their Google Maps profile to get their specific "formatted_phone_number", current rating, and full address. 
 Output the results as a JSON array.`;
 
   try {
@@ -45,7 +45,11 @@ Output the results as a JSON array.`;
             properties: {
               name: { type: Type.STRING },
               address: { type: Type.STRING },
-              phone: { type: Type.STRING, nullable: true },
+              phone: { 
+                type: Type.STRING, 
+                nullable: true, 
+                description: "The formatted_phone_number from the Google Maps profile."
+              },
               website: { type: Type.STRING, nullable: true },
               email: { type: Type.STRING, nullable: true },
               lat: { type: Type.NUMBER },
@@ -113,7 +117,6 @@ Output the results as a JSON array.`;
   } catch (error: any) {
     console.error("Primary Search Failed:", error);
     if (error.message?.includes("API_KEY_MISSING")) throw error;
-    // Fast fallback with higher quantity request if primary fails
     return await quickFallback(ai, query);
   }
 }
@@ -122,7 +125,7 @@ async function quickFallback(ai: any, query: SearchQuery): Promise<BusinessLead[
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `List exactly 100 businesses for ${query.categories.join(', ')} in ${query.city} with real phone numbers. Output ONLY a JSON array: [{name, address, phone, lat, lng, rating}]`,
+      contents: `List exactly 100 businesses for ${query.categories.join(', ')} in ${query.city} with real formatted phone numbers. Output ONLY a JSON array: [{name, address, phone, lat, lng, rating}]`,
       config: { responseMimeType: "application/json" }
     });
     const items = JSON.parse(response.text || "[]");

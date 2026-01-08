@@ -132,7 +132,7 @@ const LeadTable: React.FC<LeadTableProps> = ({ leads }) => {
                         {lead.phone}
                       </a>
                     ) : (
-                      <span className="text-slate-500 text-[10px] uppercase font-bold bg-slate-100 dark:bg-slate-800/50 px-2 py-1 rounded">NA</span>
+                      <span className="text-slate-500 text-[10px] font-bold bg-slate-100 dark:bg-slate-800/50 px-2 py-1 rounded">NA</span>
                     )}
                   </td>
                   <td className="px-4 py-4 text-sm">

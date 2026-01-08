@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { BusinessLead, SearchQuery, SearchHistory, User } from './types';
-import { BUSINESS_CATEGORIES, STORAGE_KEYS, INDIA_CITIES } from './constants';
+import { BusinessLead, SearchQuery, User } from './types';
+import { BUSINESS_CATEGORIES, INDIA_CITIES } from './constants';
 import { findBusinessLeads, calculateDistance } from './services/businessService';
-import { exportToCSV, exportToPDF, copyToClipboard } from './services/exportService';
+import { exportToCSV, exportToPDF } from './services/exportService';
 import LeadTable from './components/LeadTable';
 
 const App: React.FC = () => {
@@ -17,7 +17,6 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [leads, setLeads] = useState<BusinessLead[]>([]);
-  const [history, setHistory] = useState<SearchHistory[]>([]);
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [progress, setProgress] = useState(0);
   const [simulatedLeads, setSimulatedLeads] = useState(0);
@@ -35,16 +34,6 @@ const App: React.FC = () => {
         setUser(JSON.parse(savedUser));
       } catch (e) {
         console.error("Failed to parse user", e);
-      }
-    }
-
-    // Load History
-    const savedHistory = localStorage.getItem(STORAGE_KEYS.HISTORY);
-    if (savedHistory) {
-      try {
-        setHistory(JSON.parse(savedHistory));
-      } catch (e) {
-        console.error("Failed to parse history", e);
       }
     }
 
@@ -128,21 +117,6 @@ const App: React.FC = () => {
           setError("No results found. Please try again with a broader search.");
         }
       }, 500);
-
-      if (processed.length > 0) {
-        const newHistoryItem: SearchHistory = {
-          id: Date.now().toString(),
-          query: { city: searchCity, categories: searchCategories, radius: searchRadius },
-          timestamp: new Date().toLocaleString(),
-          resultCount: processed.length
-        };
-        setHistory(prev => {
-          const filtered = prev.filter(h => h.query.city !== searchCity || JSON.stringify(h.query.categories) !== JSON.stringify(searchCategories));
-          const updated = [newHistoryItem, ...filtered.slice(0, 14)];
-          localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(updated));
-          return updated;
-        });
-      }
     } catch (err: any) {
       console.error(err);
       setError(err.message || "Something went wrong. Please try again.");
@@ -165,7 +139,6 @@ const App: React.FC = () => {
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950 p-6 relative overflow-hidden">
-        {/* Animated Background Orbs */}
         <div className="absolute top-0 -left-4 w-72 h-72 bg-indigo-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
         <div className="absolute top-0 -right-4 w-72 h-72 bg-violet-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
         <div className="absolute -bottom-8 left-20 w-72 h-72 bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
@@ -257,7 +230,6 @@ const App: React.FC = () => {
               </div>
             </div>
             
-            {/* User Profile / Logout for Mobile */}
             <div className="lg:hidden flex items-center gap-3">
                <span className="text-xs font-bold text-slate-400 truncate max-w-[80px]">{user.name}</span>
                <button onClick={handleLogout} className="p-2 text-slate-500 hover:text-rose-500"><i className="fa-solid fa-right-from-bracket"></i></button>
@@ -305,7 +277,6 @@ const App: React.FC = () => {
             </button>
           </form>
 
-          {/* Desktop User Info */}
           <div className="hidden lg:flex items-center gap-4 pl-6 border-l border-slate-800">
             <div className="text-right">
               <p className="text-xs font-black text-white">{user.name}</p>
@@ -341,33 +312,15 @@ const App: React.FC = () => {
               <button onClick={() => setError(null)} className="px-6 py-2 bg-rose-600 text-white rounded-lg font-bold">Try Again</button>
            </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            <aside className="lg:col-span-1 space-y-6">
-              <div className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
-                <div className="bg-slate-800/50 px-6 py-3 border-b border-slate-800 font-bold flex items-center gap-2">
-                  <i className="fa-solid fa-history text-indigo-500"></i> History
-                </div>
-                <div className="p-2 space-y-1 max-h-[400px] overflow-y-auto custom-scrollbar">
-                  {history.length === 0 ? <div className="py-8 text-center opacity-30 text-xs italic">No search history</div> : history.map(h => (
-                    <div key={h.id} onClick={() => { setCity(h.query.city); setSelectedCategories(h.query.categories); setRadius(h.query.radius); performSearch(h.query.city, h.query.categories, h.query.radius); }} className="p-3 rounded-lg hover:bg-indigo-600/10 cursor-pointer border border-transparent hover:border-indigo-500/30 transition-all">
-                      <div className="flex justify-between items-center"><span className="font-bold text-sm truncate">{h.query.city}</span><span className="text-xs text-indigo-400 font-black">+{h.resultCount}</span></div>
-                      <p className="text-[10px] text-slate-500">{h.timestamp}</p>
-                    </div>
-                  ))}
-                </div>
+          <div className="w-full space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-end gap-4">
+              <h2 className="text-2xl font-black text-white">Verified Leads</h2>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <button onClick={() => exportToCSV(leads)} disabled={leads.length === 0} className="flex-1 px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold border border-slate-700 disabled:opacity-30">CSV</button>
+                <button onClick={() => exportToPDF(leads, selectedCategories)} disabled={leads.length === 0} className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold disabled:opacity-30">PDF</button>
               </div>
-            </aside>
-
-            <div className="lg:col-span-3 space-y-6">
-              <div className="flex flex-col sm:flex-row justify-between items-end gap-4">
-                <h2 className="text-2xl font-black text-white">Verified Leads</h2>
-                <div className="flex gap-2 w-full sm:w-auto">
-                  <button onClick={() => exportToCSV(leads)} disabled={leads.length === 0} className="flex-1 px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold border border-slate-700 disabled:opacity-30">CSV</button>
-                  <button onClick={() => exportToPDF(leads, selectedCategories)} disabled={leads.length === 0} className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold disabled:opacity-30">PDF</button>
-                </div>
-              </div>
-              <LeadTable leads={leads} />
             </div>
+            <LeadTable leads={leads} />
           </div>
         )}
       </main>
