@@ -302,7 +302,6 @@ const App: React.FC = () => {
               <div className="flex flex-col sm:flex-row justify-between items-end gap-4">
                 <div>
                   <h2 className="text-3xl font-black text-white">Leads Dashboard</h2>
-                  <p className="text-slate-500 font-medium">Verified data by Gemini AI</p>
                 </div>
                 <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                   <button onClick={() => exportToCSV(leads)} disabled={leads.length === 0} className="flex-1 sm:flex-none px-5 py-2.5 bg-slate-800 text-white border border-slate-700 rounded-xl text-sm font-bold hover:bg-slate-700 transition-all disabled:opacity-50">
